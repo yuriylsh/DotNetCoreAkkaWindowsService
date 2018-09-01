@@ -1,0 +1,15 @@
+﻿akka : {
+  suppress-json-serializer-warning : on
+  log-config-on-start : on
+  loglevel: DEBUG
+  loggers: ["Akka.Logger.Serilog.SerilogLogger, Akka.Logger.Serilog"]
+  actor {                
+      debug {
+          receive = on      # log any received message
+          autoreceive = on  # log automatically received messages, e.g. PoisonPill
+          lifecycle = on    # log actor lifecycle changes
+          event-stream = on # log subscription changes for Akka.NET event stream
+          unhandled = on    # log unhandled messages sent to actors
+      }
+  }
+}
