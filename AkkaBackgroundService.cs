@@ -33,9 +33,17 @@ namespace DotNetCoreAkkaWindowsService
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            await LoadAkkaConfig().Match(
-                akkaConfig => Run(akkaConfig, stoppingToken),
-                () => _logger.LogInformation(nameof(AkkaBackgroundService) + " is done."));
+            await LoadAkkaConfig().MatchAsync(
+                akkaConfig => Task.Run(() =>
+                {
+                    Run(akkaConfig, stoppingToken);
+                    return Unit.Default;
+                }, stoppingToken),
+                () =>
+                {
+                    _logger.LogInformation(nameof(AkkaBackgroundService) + " is done.");
+                    return Unit.Default;
+                });
         }
 
         private void Run(Config akkaConfig, CancellationToken stoppingToken)
@@ -44,7 +52,14 @@ namespace DotNetCoreAkkaWindowsService
             SetupAkkaDependencyInjection(system);
             var updateActor = system.ActorOf(system.DI().Props<ParentActor>(), nameof(ParentActor));
             system.Scheduler.ScheduleTellRepeatedly(TimeSpan.Zero, TimeSpan.FromSeconds(3), updateActor, 123, ActorRefs.NoSender );
-            system.WhenTerminated.Wait(stoppingToken);
+            try
+            {
+                system.WhenTerminated.Wait(stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Akka System has been terminated.");
+            }
         }
 
         private void SetupAkkaDependencyInjection(ActorSystem actorSystem)
